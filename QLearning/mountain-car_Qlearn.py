@@ -207,7 +207,7 @@ if __name__ == "__main__":
     # Initialize QLearn object
     AI = QLearn(actions,epsilon=start_epsilon,alpha=alpha, gamma=gamma)
     # Load pre-trained model
-    #AI.importQ('Qtable32121_A_10000epoch')
+    #AI.importQ('QLearning/Q_table_27_27_3_epoch_1000')
     AI.plotQ()
     # ----------------------------------------
     # Train
