@@ -253,7 +253,7 @@ if __name__ == "__main__":
         AI.plotQupdate()
     # ----------------------------------------
     # Export Q table
-    AI.exportQ('Qtable32121_1000epoch')
+    AI.exportQ('Q_table_%d_%d_3_epoch_%d' % (AI.N_position,AI.N_velocity,train_epoch))
     AI.plotQaction()
     # ----------------------------------------
     # Test
