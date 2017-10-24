@@ -41,7 +41,10 @@ class QLearn:
         vel = np.argmin(abs(self.velocities - state1[1]), axis=0)
         Q_n = self.Q[vel,3*pos + action1]
         maxQ = max([self.getQ(state2, a) for a in self.actions])
-        self.Q[vel, 3 * pos + action1] = Q_n + self.alpha * (reward + self.gamma*maxQ - Q_n)
+        if Q_n == -float('inf') or maxQ == -float('inf'):
+            self.Q[vel,3*pos + action1] = reward
+        else:
+            self.Q[vel, 3 * pos + action1] = Q_n + self.alpha * (reward + self.gamma*maxQ - Q_n)
     #
     def chooseAction(self, state):
         if random.random() < self.epsilon:
@@ -114,9 +117,9 @@ class QLearn:
             Q[3 * s_2 + 1,:] = self.Q[s_2,:]
             Q[3 * s_2 + 2,:] = self.Q[s_2,:]
         axs.get_images()[0].set_data(Q)
-        #fig.canvas.draw()
-        axs.draw_artist(axs.images[0])
-        fig.canvas.blit(axs.bbox)
+        fig.canvas.draw()
+        #axs.draw_artist(axs.images[0])
+        #fig.canvas.blit(axs.bbox)
     #
     def clearTrajectory(self):
         self.plot_reset = True
@@ -158,13 +161,9 @@ class QLearn:
 #
 if __name__ == "__main__":
     # ----------------------------------------
-    # Define parameters for e-greedy policy
-    epsilon = 0.3   # exploration
-    # Define parameters for Q-learning
-    alpha = 0.2
-    gamma = 0.97
-    train_epoch = 10001
-    max_steps = 500
+    # Define parameters for greedy policy
+    epsilon = 0.0   # no exploration
+    test_epoch = 1000
     # ----------------------------------------
     # Actions
     # Type: Discrete(3)
@@ -187,57 +186,47 @@ if __name__ == "__main__":
     env = gym.make('MountainCar-v0')
     # ----------------------------------------
     # Initialize QLearn object
-    AI = QLearn(actions,epsilon=epsilon,alpha=alpha, gamma=gamma)
+    AI = QLearn(actions,epsilon=epsilon)
     # Load pre-trained model
-    #AI.importQ('Q_table_27_27_3_epoch_1000')
+    AI.importQ('Q_table_27_27_3_epoch_1000')
     AI.plotQ()
+    AI.plotQaction()
     # ----------------------------------------
-    # Train
-    for e in range(train_epoch):
+    # Test
+    for e in range(test_epoch):
+        # Clear trajectory
+        AI.clearTrajectory()
+        plt.pause(0.001)
+
         # Get initial input
         observation = env.reset()
-        observation_init = observation
-
-        # Set exploration
-        #AI.setEpsilon(epsilons[e])
-
         # Training for single episode
         step = 0
-        reward = -1
         game_over = False
         while (not game_over):
             observation_capture = observation
-            #env.render()
+            env.render()
 
-            # Epsilon-Greedy policy
+            # Greedy policy
             action = AI.chooseAction(observation)
 
             # Apply action, get rewards and new state
-            observation, reward, done, info = env.step(action)
-            if observation[0] >= 0.6:
-                reward = 1
-            else:
-                reward += 10.*np.abs(observation[1])
-                #reward += 0.1*np.abs(observation_init[0]-observation[0]) + 10.*np.abs(observation[1]) #+ observation[0]/5.
+            observation, reward, game_over, info = env.step(action)
 
-            # Refinement of model
-            AI.learnQ(observation_capture, action, reward, observation)
+            # Plot trajector
+            AI.plotTrajectory(observation_capture,action)
 
             step += 1
-            if (step >= max_steps or observation[0] >= 0.6) and done:
-                game_over = True
         #
-        if reward > 0:
-            print("#TRAIN Episode:{} finished after {} timesteps. Reached GOAL!.".format(e,step))
+        if observation[0] > 0.5:
+            print("#TEST Episode:{} finished after {} timesteps. Reached GOAL!.".format(e, step))
         else:
-            print("#TRAIN Episode:{} finished after {} timesteps.".format(e,step))
+            print("#TEST Episode:{} finished after {} timesteps. GAMEOVER!.".format(e, step))
         #
-        AI.plotQupdate()
-    # ----------------------------------------
-    # Export Q table
-    AI.exportQ('Q_table_%d_%d_3_epoch_%d' % (AI.N_position,AI.N_velocity,train_epoch))
-    AI.plotQaction()
+        # Plot
+        plt.pause(1.5)
     # ----------------------------------------
     print("Done!.")
     # Some delay
+    #plt.pause(5)
     plt.show()
