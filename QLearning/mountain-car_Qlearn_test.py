@@ -27,9 +27,6 @@ class QLearn:
         #
         self.plot_reset = True
     #
-    def setEpsilon(self,epsilon):
-        self.epsilon = epsilon
-    #
     def getQ(self, state, action):
         pos = np.argmin(abs(self.positions - state[0]), axis=0)
         vel = np.argmin(abs(self.velocities - state[1]), axis=0)
@@ -85,7 +82,7 @@ class QLearn:
         #axs.clear
         # Parameters
         grid_on = True
-        v_max = 2. #np.max(self.Q[0, :, :])
+        v_max = 10. #np.max(self.Q[0, :, :])
         v_min = -50.
         x_labels = ["%.2f" % x for x in self.positions ]
         y_labels = ["%.2f" % y for y in self.velocities]
@@ -188,7 +185,7 @@ if __name__ == "__main__":
     # Initialize QLearn object
     AI = QLearn(actions,epsilon=epsilon)
     # Load pre-trained model
-    AI.importQ('Q_table_27_27_3_epoch_1000')
+    AI.importQ('Q_table_27_27_3_epoch_3000')
     AI.plotQ()
     AI.plotQaction()
     # ----------------------------------------
