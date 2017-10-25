@@ -27,13 +27,12 @@ class QLearn:
         #
         self.plot_reset = True
     #
-    def setEpsilon(self,epsilon):
-        self.epsilon = epsilon
     #
     def getQ(self, state, action):
         pos = np.argmin(abs(self.positions - state[0]), axis=0)
         vel = np.argmin(abs(self.velocities - state[1]), axis=0)
         return self.Q[vel,3*pos + action]
+    #
     #
     def learnQ(self, state1, action1, reward, state2):
         # Q-learning: Q(s, a) += alpha * (reward(s,a) + max(Q(s') - Q(s,a))
@@ -82,7 +81,7 @@ class QLearn:
         #axs.clear
         # Parameters
         grid_on = True
-        v_max = 2. #np.max(self.Q[0, :, :])
+        v_max = 10. #np.max(self.Q[0, :, :])
         v_min = -50.
         x_labels = ["%.2f" % x for x in self.positions ]
         y_labels = ["%.2f" % y for y in self.velocities]
@@ -159,11 +158,13 @@ class QLearn:
 if __name__ == "__main__":
     # ----------------------------------------
     # Define parameters for e-greedy policy
-    epsilon = 0.3   # exploration
+    epsilon = 1.0   # exploration
+    epsilon_floor = 0.01
+    exploration_decay = 0.995
     # Define parameters for Q-learning
     alpha = 0.2
     gamma = 0.97
-    train_epoch = 10001
+    train_epoch = 3000
     max_steps = 500
     # ----------------------------------------
     # Actions
@@ -233,6 +234,10 @@ if __name__ == "__main__":
             print("#TRAIN Episode:{} finished after {} timesteps.".format(e,step))
         #
         AI.plotQupdate()
+        #
+        AI.epsilon *= exploration_decay
+        AI.epsilon = max(epsilon_floor, AI.epsilon)
+        #
     # ----------------------------------------
     # Export Q table
     AI.exportQ('Q_table_%d_%d_3_epoch_%d' % (AI.N_position,AI.N_velocity,train_epoch))
