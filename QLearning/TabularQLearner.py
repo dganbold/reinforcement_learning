@@ -1,16 +1,14 @@
 #
 #
-import gym
 import random
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
-#
-#
+
 fig, axs = plt.subplots(1, 1, figsize=(5.8, 5))
-#
-#
-class QLearn:
+
+
+class TabularQLearner:
     def __init__(self, actions, epsilon=0.1, alpha=0.2, gamma=0.9):
         self.epsilon = epsilon
         self.alpha = alpha
@@ -26,14 +24,12 @@ class QLearn:
         self.Q = (-1.)*np.ones((self.N_velocity,self.N_position*len(self.actions)))
         #
         self.plot_reset = True
-    #
-    #
+
     def getQ(self, state, action):
         pos = np.argmin(abs(self.positions - state[0]), axis=0)
         vel = np.argmin(abs(self.velocities - state[1]), axis=0)
         return self.Q[vel,3*pos + action]
-    #
-    #
+
     def learnQ(self, state1, action1, reward, state2):
         # Q-learning: Q(s, a) += alpha * (reward(s,a) + max(Q(s') - Q(s,a))
         pos = np.argmin(abs(self.positions - state1[0]), axis=0)
@@ -41,44 +37,45 @@ class QLearn:
         Q_n = self.Q[vel,3*pos + action1]
         maxQ = max([self.getQ(state2, a) for a in self.actions])
         self.Q[vel, 3 * pos + action1] = Q_n + self.alpha * (reward + self.gamma*maxQ - Q_n)
-    #
-    def chooseAction(self, state):
+
+    def eGreedy(self, state):
         if random.random() < self.epsilon:
             action = random.choice(self.actions)
         else:
-            q = [self.getQ(state, a) for a in self.actions]
-            maxQ = max(q)
-            count = q.count(maxQ)
-            # In case there're several state-action max values
-            # policy select a random one of them
-            if count > 1:
-                best = [i for i in range(len(self.actions)) if q[i] == maxQ]
-                i = random.choice(best)
-            else:
-                i = q.index(maxQ)
-            action = self.actions[i]
+            action = self.greedy(state)
         return action
-    #
+
+    def greedy(self, state):
+        q = [self.getQ(state, a) for a in self.actions]
+        maxQ = max(q)
+        best = [i for i in range(len(self.actions)) if q[i] == maxQ]
+        # In case there're several state-action max values
+        # policy select a random one of them
+        if len(best) > 1:
+            i = random.choice(best)
+        else:
+            i = q.index(maxQ)
+        return self.actions[i]
+
     def exportQ(self,fname):
         print '--------------------------------------------------'
         print self.Q
         print '--------------------------------------------------'
         print("Export Q-table to {}".format(fname))
         np.save(fname, self.Q)
-    #
+
     def importQ(self,fname):
         print("Import Q-table from {}".format(fname))
         self.Q = np.load(fname + '.npy')
         print '--------------------------------------------------'
         print self.Q
         print '--------------------------------------------------'
-    #
+
     def printQ(self):
         print '--------------------------------------------------'
         print self.Q
-    #
+
     def plotQ(self,clear=False):
-        #axs.clear
         # Parameters
         grid_on = True
         v_max = 10. #np.max(self.Q[0, :, :])
@@ -105,7 +102,7 @@ class QLearn:
         self.cb = fig.colorbar(im, ax=axs)
         #
         plt.show(block=False)
-    #
+
     def plotQupdate(self):
         Q = np.zeros((self.N_velocity * len(self.actions), self.N_position * len(self.actions)))
         for s_2 in range(len(self.velocities)):
@@ -116,13 +113,13 @@ class QLearn:
         #fig.canvas.draw()
         axs.draw_artist(axs.images[0])
         fig.canvas.blit(axs.bbox)
-    #
+
     def clearTrajectory(self):
         self.plot_reset = True
         if len(axs.lines) > 0:
             axs.lines[0].remove()
         fig.canvas.draw()
-    #
+
     def plotTrajectory(self, state, action):
         pos = 1 + 3 * np.argmin(abs(self.positions - state[0]), axis=0)
         vel = 1 + 3 * np.argmin(abs(self.velocities - state[1]), axis=0)
@@ -139,7 +136,7 @@ class QLearn:
                 axs.lines[0].set_data(x, y)
                 axs.draw_artist(axs.lines[0])
                 fig.canvas.blit(axs.bbox)
-    #
+
     def plotQaction(self):
         for vel in range(len(self.velocities)):
             for pos in range(len(self.positions)):
@@ -153,96 +150,5 @@ class QLearn:
                     else:
                         axs.text(3 * pos + .4, 3 * vel + 1.6, u"\u25B6", fontsize=5)
         fig.canvas.draw()
-#
-#
-if __name__ == "__main__":
-    # ----------------------------------------
-    # Define parameters for e-greedy policy
-    epsilon = 1.0   # exploration
-    epsilon_floor = 0.01
-    exploration_decay = 0.995
-    # Define parameters for Q-learning
-    alpha = 0.2
-    gamma = 0.97
-    train_epoch = 3000
-    max_steps = 500
-    # ----------------------------------------
-    # Actions
-    # Type: Discrete(3)
-    # Num | Observation
-    # 0   | push_left
-    # 1   | no_push
-    # 2   | push_right
-    N_action = 3
-    actions = [0,1,2]
-    # ----------------------------------------
-    # Observation
-    # Type: Box(2)
-    # Num | Observation | Min   | Max
-    # 0   | position    | -1.2  | 0.6
-    # 1   | velocity    | -0.07 | 0.07
-    N_input = 2
-    observation = []
-    # ----------------------------------------
-    # Define environment/game
-    env = gym.make('MountainCar-v0')
-    # ----------------------------------------
-    # Initialize QLearn object
-    AI = QLearn(actions,epsilon=epsilon,alpha=alpha, gamma=gamma)
-    # Load pre-trained model
-    #AI.importQ('Q_table_27_27_3_epoch_1000')
-    AI.plotQ()
-    # ----------------------------------------
-    # Train
-    for e in range(train_epoch):
-        # Get initial input
-        observation = env.reset()
-        observation_init = observation
 
-        # Set exploration
-        #AI.setEpsilon(epsilons[e])
-
-        # Training for single episode
-        step = 0
-        reward = -1
-        game_over = False
-        while (not game_over):
-            observation_capture = observation
-            #env.render()
-
-            # Epsilon-Greedy policy
-            action = AI.chooseAction(observation)
-
-            # Apply action, get rewards and new state
-            observation, reward, done, info = env.step(action)
-            if observation[0] >= 0.6:
-                reward = 1
-            else:
-                reward += 10.*np.abs(observation[1])
-                #reward += 0.1*np.abs(observation_init[0]-observation[0]) + 10.*np.abs(observation[1]) #+ observation[0]/5.
-
-            # Refinement of model
-            AI.learnQ(observation_capture, action, reward, observation)
-
-            step += 1
-            if (step >= max_steps or observation[0] >= 0.6) and done:
-                game_over = True
-        #
-        if reward > 0:
-            print("#TRAIN Episode:{} finished after {} timesteps. Reached GOAL!.".format(e,step))
-        else:
-            print("#TRAIN Episode:{} finished after {} timesteps.".format(e,step))
-        #
-        AI.plotQupdate()
-        #
-        AI.epsilon *= exploration_decay
-        AI.epsilon = max(epsilon_floor, AI.epsilon)
-        #
-    # ----------------------------------------
-    # Export Q table
-    AI.exportQ('Q_table_%d_%d_3_epoch_%d' % (AI.N_position,AI.N_velocity,train_epoch))
-    AI.plotQaction()
-    # ----------------------------------------
-    print("Done!.")
-    # Some delay
-    plt.show()
+    # END TabularQLearner class
