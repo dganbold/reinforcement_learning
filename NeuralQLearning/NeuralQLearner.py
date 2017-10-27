@@ -47,6 +47,7 @@ Q_Network = Q_network_prediction(Q_x, test=False)
 Q_Network.persistent = True
 #Q_Network.forward()
 #print "Forward Q_Network:"
+#print Q_Network.d
 
 # Create loss function.
 #self.loss = F.mean(F.squared_error(self.train_model, self.yt))
@@ -54,11 +55,10 @@ loss = F.mean(F.huber_loss(Q_Network, Q_y))
 
 # Preparing the Computation Graph for Q-hut
 Q_target_x = nn.Variable([batch_size, n_states])
-Q_target_w1 = nn.Variable([n_states, hn], need_grad=True)   # Weights
-Q_target_b1 = nn.Variable([hn], need_grad=True)             # Biases
-Q_target_w2 = nn.Variable([hn, n_actions], need_grad=True)  # Weights
-Q_target_b2 = nn.Variable([n_actions], need_grad=True)      # Biases
-
+Q_target_w1 = nn.Variable([n_states, hn], need_grad=False)   # Weights
+Q_target_b1 = nn.Variable([hn], need_grad=False)             # Biases
+Q_target_w2 = nn.Variable([hn, n_actions], need_grad=False)  # Weights
+Q_target_b2 = nn.Variable([n_actions], need_grad=False)      # Biases
 
 def Q_target_network_prediction(x, test=True):
     # Construct Network for Q-Learning.
@@ -69,23 +69,25 @@ def Q_target_network_prediction(x, test=True):
 
 def update_Q_target():
     params = nn.get_parameters().items()
-    Q_target_w1.d = params[0][1].g.copy()
-    Q_target_b1.d = params[1][1].g.copy()
-    Q_target_w2.d = params[2][1].g.copy()
-    Q_target_b2.d = params[3][1].g.copy()
+    Q_target_w1.d = params[0][1].d.copy()
+    Q_target_b1.d = params[1][1].d.copy()
+    Q_target_w2.d = params[2][1].d.copy()
+    Q_target_b2.d = params[3][1].d.copy()
     #print "Updating target Q-network"
     #for name, param in params:
     #    print name, param.shape # Showing
 
-Q_target_Network = Q_network_prediction(Q_target_x, test=True)
-#Q_target_Network.forward()
+Q_target_Network = Q_target_network_prediction(Q_target_x, test=True)
+#Q_target_x.d = Q_x.d.copy()
+#Q_target_Network.forward(clear_buffer=True)
 #print "Forward Q_taget_Network:"
 #print Q_target_Network.d
 
 update_Q_target()
-#Q_target_Network.forward()
+#Q_target_Network.forward(clear_buffer=True)
 #print "Forward Q_taget_Network:"
 #print Q_target_Network.d
+#print Q_target_network_prediction(Q_target_x, test=True)
 
 # --------------------------------------------------
 print "Initializing the Solver."
@@ -163,7 +165,7 @@ class NeuralQLearner:
         self.positions = np.linspace(self.plim[0], self.plim[1], num=self.N_position, endpoint=True)
         self.velocities = np.linspace(self.vlim[0], self.vlim[1], num=self.N_velocity, endpoint=True)
 
-        self.update_Q_hut = 1000
+        self.update_Q_hut = 200
         self.iter = 0
         #
         self.plot_reset = True
@@ -252,6 +254,8 @@ class NeuralQLearner:
     def importNetwork(self, fname):
         print("Import Q-network from {}".format(fname))
         nn.load_parameters(fname + '.h5')
+        print "Updating target Q-network"
+        update_Q_target()
         print '--------------------------------------------------'
         print nn.get_parameters()
         print '--------------------------------------------------'
