@@ -15,7 +15,7 @@ if __name__ == "__main__":
     gamma = 0.98
     epoch = 1000
     max_steps = 1000
-    max_memory = max_steps*3
+    max_memory = max_steps*10
     batch_size = int(32)
     # ----------------------------------------
     # Actions

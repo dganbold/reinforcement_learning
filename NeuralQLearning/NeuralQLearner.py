@@ -26,7 +26,7 @@ fig, axs = plt.subplots(1, 1, figsize=(5.8, 5))
 batch_size = 32
 n_states = 2
 n_actions = 3
-hn = 10
+hn = 50
 learning_rate = 1e-3
 
 # --------------------------------------------------
@@ -45,8 +45,8 @@ def Q_network_prediction(x, test=True):
 
 Q_Network = Q_network_prediction(Q_x, test=False)
 Q_Network.persistent = True
-Q_Network.forward()
-print "Forward Q_Network:"
+#Q_Network.forward()
+#print "Forward Q_Network:"
 
 # Create loss function.
 #self.loss = F.mean(F.squared_error(self.train_model, self.yt))
@@ -78,14 +78,14 @@ def update_Q_target():
     #    print name, param.shape # Showing
 
 Q_target_Network = Q_network_prediction(Q_target_x, test=True)
-Q_target_Network.forward()
-print "Forward Q_taget_Network:"
-print Q_target_Network.d
+#Q_target_Network.forward()
+#print "Forward Q_taget_Network:"
+#print Q_target_Network.d
 
 update_Q_target()
-Q_target_Network.forward()
-print "Forward Q_taget_Network:"
-print Q_target_Network.d
+#Q_target_Network.forward()
+#print "Forward Q_taget_Network:"
+#print Q_target_Network.d
 
 # --------------------------------------------------
 print "Initializing the Solver."

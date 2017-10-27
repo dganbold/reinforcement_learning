@@ -14,7 +14,6 @@ if __name__ == "__main__":
     alpha = 0.2
     gamma = 0.97
     epoch = 10
-    max_steps = 500
     # ----------------------------------------
     # Actions
     # Type: Discrete(3)
