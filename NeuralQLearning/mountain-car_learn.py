@@ -8,7 +8,7 @@ if __name__ == "__main__":
     # ----------------------------------------
     # Define parameters for greedy policy
     epsilon = 0.5   # exploration
-    epsilon_floor = 0.1
+    epsilon_floor = 0.05
     exploration_decay = 0.998
     # Define parameters for Q-learning
     alpha = 0.2
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     # 1   | no_push
     # 2   | push_right
     n_action = 3
-    actions = [0, 1, 2]
+    actions = np.array([0, 1, 2])
     # ----------------------------------------
     # Observation
     # Type: Box(2)
@@ -36,7 +36,8 @@ if __name__ == "__main__":
     observation = []
     # ----------------------------------------
     # Define environment/game
-    env = gym.make('MountainCar-v0')
+    env_name = 'MountainCar-v0'
+    env = gym.make(env_name)
     # ----------------------------------------
     # Initialize Neural Q-Learn object
     AI = NeuralQLearner(n_input, actions, batch_size, epsilon, alpha, gamma)
@@ -52,7 +53,7 @@ if __name__ == "__main__":
 
         # Training for single episode
         step = 0
-        reward = -1
+        total_reward = 0
         game_over = False
         while (not game_over):
             observation_capture = observation
@@ -65,11 +66,12 @@ if __name__ == "__main__":
             observation, reward, done, info = env.step(action)
             if observation[0] >= 0.6:
                 reward = 1
+                game_over = True
             else:
-                reward += 10.*np.abs(observation[1])
+                reward += 5.*np.abs(observation[1])
 
             step += 1
-            if (step >= max_steps or observation[0] >= 0.6) and done:
+            if step >= max_steps and done:
                 game_over = True
 
             # Store experience
@@ -81,11 +83,10 @@ if __name__ == "__main__":
             # Refinement of model
             if len(miniBatch) == batch_size:
                 AI.train_Q_network(miniBatch)
-
-        if max_steps > step:
-            print("#TRAIN Episode:{} finished after {} timesteps. exploration:{}. Reached GOAL!.".format(e, step, AI.epsilon))
-        else:
-            print("#TRAIN Episode:{} finished after {} timesteps. exploration:{}".format(e, step, AI.epsilon))
+            #
+            total_reward += reward
+        #  End of the One-Episode training
+        print('#TRAIN Episode:%3i, Reward:%7.3f, Steps:%3i, Exploration:%1.4f'%(e, total_reward, step, AI.epsilon))
         # Update exploration
         AI.epsilon *= exploration_decay
         AI.epsilon = max(epsilon_floor, AI.epsilon)
@@ -94,7 +95,7 @@ if __name__ == "__main__":
         #
     # ----------------------------------------
     # Export trained Neural-Net
-    AI.exportNetwork('Q_network_epoch_%d' % (epoch))
+    AI.exportNetwork('models/%s_Q_network_epoch_%d' % (env_name, epoch))
     # ----------------------------------------
     print("Done!.")
     # Close environment

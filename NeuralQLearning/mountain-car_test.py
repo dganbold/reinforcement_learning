@@ -14,6 +14,7 @@ if __name__ == "__main__":
     alpha = 0.2
     gamma = 0.97
     epoch = 10
+    batch_size = int(32)
     # ----------------------------------------
     # Actions
     # Type: Discrete(3)
@@ -33,12 +34,14 @@ if __name__ == "__main__":
     observation = []
     # ----------------------------------------
     # Define environment/game
-    env = gym.make('MountainCar-v0')
+    env_name = 'MountainCar-v0'
+    env = gym.make(env_name)
     # ----------------------------------------
     # Initialize QLearn object
-    AI = NeuralQLearner(n_input, actions, epsilon=epsilon)
+    AI = NeuralQLearner(n_input, actions, batch_size, epsilon, alpha, gamma)
     # Load pre-trained model
-    AI.importNetwork('Q_network_epoch_1000')
+    AI.importNetwork('models/%s_Q_network_epoch_1000' % (env_name))
+    # Plot Eval-Q
     AI.plotQ()
     AI.plotQaction()
     # ----------------------------------------
@@ -52,6 +55,7 @@ if __name__ == "__main__":
         observation = env.reset()
         # Training for single episode
         step = 0
+        total_reward = 0
         game_over = False
         while (not game_over):
             observation_capture = observation
@@ -63,15 +67,13 @@ if __name__ == "__main__":
             # Apply action, get rewards and new state
             observation, reward, game_over, info = env.step(action)
 
-            step += 1
             # Plot trajectory
             AI.plotTrajectory(observation_capture, action)
-        #
-        if observation[0] > 0.5:
-            print("#TEST Episode:{} finished after {} timesteps. Reached GOAL!.".format(e, step))
-        else:
-            print("#TEST Episode:{} finished after {} timesteps. Timeout!.".format(e, step))
-        #
+            #
+            step += 1
+            total_reward += reward
+        #  End of the single episode testing
+        print('#TEST Episode:%2i, Reward:%7.3f, Steps:%3i' % (e, total_reward, step))
         # Plot
         plt.pause(1.5)
     # ----------------------------------------
