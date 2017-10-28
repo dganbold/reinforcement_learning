@@ -78,7 +78,8 @@ if __name__ == "__main__":
         plt.pause(1.5)
     # ----------------------------------------
     print("Done!.")
-    # Close environment
-    env.close
     # Some delay
     raw_input('Press enter to terminate:')
+    # Close environment
+    env.close()
+# EOF

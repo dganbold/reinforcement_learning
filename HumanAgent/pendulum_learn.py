@@ -12,14 +12,14 @@ if __name__ == "__main__":
     # ----------------------------------------
     # Define parameters
     epoch = 10
-    max_steps = 200
+    max_steps = 1000
     # ----------------------------------------
     # Actions
     # Type: Discrete(3)
     # Num | Observation  | Min   | Max
     # 0   | Joint effort | -2.0  | 2.0
-    n_action = 21
-    actions = np.linspace(-2, 2, num=n_action, endpoint=True)
+    n_action = 1
+    action = 0
     # ----------------------------------------
     # Observation
     # Type: Box(2)
@@ -31,7 +31,8 @@ if __name__ == "__main__":
     observation = []
     # ----------------------------------------
     # Define environment/game
-    env = gym.make('CartPole-v0')
+    env_name = 'Pendulum-v0'
+    env = gym.make(env_name)
     # ----------------------------------------
     # Initialize the joysticks
     pygame.init()
@@ -50,11 +51,31 @@ if __name__ == "__main__":
     print("Number of hats: {}".format(hats) )
     # ----------------------------------------
     # Train
-    for e in range(train_epoch):
+    for e in range(epoch):
         # Get initial input
         observation = env.reset()
         observation_init = observation
-
+        env.render()
+        # ----------------------------------------
+        # Wait for start [o] key
+        print('Press [o] key to start episode...')
+        while (True):
+            try:
+                pygame.event.get()
+                if joystick.get_button(2):
+                    print("[o] is pressed!.")
+                    break
+                elif joystick.get_button(1):
+                    print("[x] is pressed!.Exit")
+                    # Close environment
+                    env.close()
+                    pygame.quit()
+                    exit(0)
+            except KeyboardInterrupt:
+                print("KeyboardInterrupt!.")
+                pygame.quit()
+                exit(0)
+        # ----------------------------------------
         # Training for single episode
         step = 0
         total_reward = 0
@@ -68,18 +89,10 @@ if __name__ == "__main__":
                 pygame.event.get()
                 #action = 1
                 if joystick.get_button(1):
-                    print("[X] is pressed!.Exit")
+                    print("[x] is pressed!.Exit")
                     pygame.quit()
                     exit(0)
-                if joystick.get_hat(0)[0] == -1:
-                    #print("ACtion:push_left")
-                    action = 0
-                #elif joystick.get_hat(0)[0] == 1:
-                #    #print("ACtion:push_right")
-                #    action = 2
-                else:
-                    #print("ACtion:no_push")
-                    action = 1
+                action = [2*joystick.get_axis(0)]
             except KeyboardInterrupt:
                 print("KeyboardInterrupt!.")
                 pygame.quit()
@@ -96,7 +109,7 @@ if __name__ == "__main__":
     	    # Used to manage how fast the screen updates
             time.sleep(0.01)
         # End of the single episode training
-        print('#TRAIN Episode:%3i, Reward:%7.3f, Steps:%3i, Exploration:%1.4f'%(e, total_reward, step, AI.epsilon))
+        print('#TRAIN Episode:%3i, Reward:%7.3f, Steps:%3i'%(e, total_reward, step))
         #
     # ----------------------------------------
     pygame.quit()

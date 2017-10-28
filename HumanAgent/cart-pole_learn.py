@@ -12,7 +12,7 @@ if __name__ == "__main__":
     # ----------------------------------------
     # Define parameters
     epoch = 10
-    max_steps = 200
+    max_steps = 1000
     # ----------------------------------------
     # Actions
     # Type: Discrete(2)
@@ -33,7 +33,8 @@ if __name__ == "__main__":
     observation = []
     # ----------------------------------------
     # Define environment/game
-    env = gym.make('CartPole-v0')
+    env_name = 'CartPole-v0'
+    env = gym.make(env_name)
     # ----------------------------------------
     # Initialize the joysticks
     pygame.init()
@@ -57,6 +58,27 @@ if __name__ == "__main__":
         observation = env.reset()
         observation_init = observation
         action = 0
+        env.render()
+        # ----------------------------------------
+        # Wait for start [o] key
+        print('Press [o] key to start episode...')
+        while (True):
+            try:
+                pygame.event.get()
+                if joystick.get_button(2):
+                    print("[o] is pressed!.")
+                    break
+                elif joystick.get_button(1):
+                    print("[x] is pressed!.Exit")
+                    # Close environment
+                    env.close()
+                    pygame.quit()
+                    exit(0)
+            except KeyboardInterrupt:
+                print("KeyboardInterrupt!.")
+                pygame.quit()
+                exit(0)
+        # ----------------------------------------
         # Training for single episode
         step = 0
         total_reward = 0
@@ -69,7 +91,9 @@ if __name__ == "__main__":
             try:
                 pygame.event.get()
                 if joystick.get_button(1):
-                    print("[X] is pressed!.Exit")
+                    print("[x] is pressed!.Exit")
+                    # Close environment
+                    env.close()
                     pygame.quit()
                     exit(0)
                 if joystick.get_hat(0)[0] == -1:
@@ -94,10 +118,11 @@ if __name__ == "__main__":
     	    # Used to manage how fast the screen updates
             time.sleep(0.01)
         # End of the single episode training
-        print('#TRAIN Episode:%3i, Reward:%7.3f, Steps:%3i, Exploration:%1.4f'%(e, total_reward, step, AI.epsilon))
+        print('#TRAIN Episode:%3i, Reward:%7.3f, Steps:%3i'%(e, total_reward, step))
         #
     # ----------------------------------------
     pygame.quit()
     print("Done!.")
     # Some delay
     time.sleep(2)
+# EOF

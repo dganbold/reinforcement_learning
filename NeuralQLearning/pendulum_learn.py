@@ -89,7 +89,7 @@ if __name__ == "__main__":
     AI.exportNetwork('models/%s_Q_network_epoch_%d' % (env_name, epoch))
     # ----------------------------------------
     print("Done!.")
-    # Close environment
-    env.close()
     # Some delay
     raw_input('Press enter to terminate:')
+    # Close environment
+    env.close()
