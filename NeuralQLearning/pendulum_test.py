@@ -66,7 +66,7 @@ if __name__ == "__main__":
             #
             step += 1
             total_reward += reward
-        #  End of the single episode testing
+        # End of the single episode testing
         print('#TEST Episode:%2i, Reward:%7.3f, Steps:%3i' % (e, total_reward, step))
         # Plot
         #

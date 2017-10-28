@@ -85,7 +85,7 @@ if __name__ == "__main__":
                 AI.train_Q_network(miniBatch)
             #
             total_reward += reward
-        #  End of the One-Episode training
+        # End of the single episode training
         print('#TRAIN Episode:%3i, Reward:%7.3f, Steps:%3i, Exploration:%1.4f'%(e, total_reward, step, AI.epsilon))
         # Update exploration
         AI.epsilon *= exploration_decay
