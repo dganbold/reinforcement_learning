@@ -46,6 +46,8 @@ if __name__ == "__main__":
     AI.plotQaction()
     # ----------------------------------------
     # Test
+    env.render()
+    raw_input('Press enter to start:')
     for e in range(epoch):
         # Clear trajectory
         AI.clearTrajectory()
