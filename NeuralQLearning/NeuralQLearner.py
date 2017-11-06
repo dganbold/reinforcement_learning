@@ -310,7 +310,7 @@ class NeuralQLearner:
             self.plot_reset = False
             if len(axs.lines) > 0:
                 axs.lines[0].remove()
-            axs.plot(pos, vel, color='blue', linestyle='-')
+            axs.plot(pos, vel, color='black', linestyle='-')
         else:
             x, y = axs.lines[0].get_data()
             if x[-1] != pos or y[-1] != vel:
