@@ -19,17 +19,12 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 
-fig, axs = plt.subplots(1, 1, figsize=(5.8, 5))
-#plt.ion()
-#plt.show(block=False)
-
 
 class Experience(object):
 
-    def __init__(self, max_memory=1000, discount=.9):
+    def __init__(self, max_memory=1000):
         self.max_memory = max_memory
         self.memory = list()
-        self.discount = discount
 
     def memorize(self, states, game_over):
         # memory[i] = [[state_t, action_t, reward_t, state_t+1], game_over?]
@@ -45,15 +40,18 @@ class Experience(object):
             batch.append(self.memory[index])
         return batch
 
+    def clear(self):
+        del self.memory[:]
+
     # END Experience class
 
 
 class NeuralQLearner:
-    def __init__(self, n_states, actions, batch_size=int(128), epsilon=0.1, alpha=0.2, gamma=0.9):
+    def __init__(self, n_states, actions, hidden_neurons=50, batch_size=128, update_target=100, epsilon=0.1, alpha=0.2, gamma=0.9):
         # Get context.
         from nnabla.contrib.context import extension_context
         args = get_args()
-        print "weight_decay:", args.weight_decay
+        # print "weight_decay:", args.weight_decay
         extension_module = args.context
         if args.context is None:
             extension_module = 'cpu'
@@ -72,42 +70,34 @@ class NeuralQLearner:
 
         # Neural network's training parametes
         self.learning_rate = 1e-3
+        # Hidden layer's neuron number
+        self.hidden_neurons = hidden_neurons
         self.batch_size = batch_size
         self.model_save_path = 'models'
         self.model_save_interval = 1000
-        self.weight_decay = 0
-
-        # State-Action Plot's parametes
-        self.plim = [-1.2, 0.6]
-        self.vlim = [-0.07, 0.07]
-        self.N_position = 27
-        self.N_velocity = 27
-        self.positions = np.linspace(self.plim[0], self.plim[1], num=self.N_position, endpoint=True)
-        self.velocities = np.linspace(self.vlim[0], self.vlim[1], num=self.N_velocity, endpoint=True)
+        self.weight_decay = args.weight_decay
 
         # --------------------------------------------------
         print "Initializing the Neural Network."
         # --------------------------------------------------
-        # Hidden layer's neuron number
-        hn = 50
         # Preparing the Computation Graph for Q
         self.Q_x = nn.Variable([self.batch_size, self.n_states])
         self.Q_y = nn.Variable([self.batch_size, self.n_actions])
 
         # Construct Q-Network for Q-Learning.
-        l1 = F.tanh(PF.affine(self.Q_x, hn, name='affine1'))
+        l1 = F.tanh(PF.affine(self.Q_x, self.hidden_neurons, name='affine1'))
         self.Q_Network = PF.affine(l1, self.n_actions, name='affine2')
         self.Q_Network.persistent = True
 
         # Create loss function.
-        #self.loss = F.mean(F.squared_error(self.train_model, self.yt))
+        # self.loss = F.mean(F.squared_error(self.train_model, self.yt))
         self.loss = F.mean(F.huber_loss(self.Q_Network, self.Q_y))
 
         # Preparing the Computation Graph for target Q-Network
         self.Q_target_x = nn.Variable([self.batch_size, self.n_states])
-        self.Q_target_w1 = nn.Variable([self.n_states, hn], need_grad=False)   # Weights
-        self.Q_target_b1 = nn.Variable([hn], need_grad=False)                  # Biases
-        self.Q_target_w2 = nn.Variable([hn, self.n_actions], need_grad=False)  # Weights
+        self.Q_target_w1 = nn.Variable([self.n_states, self.hidden_neurons], need_grad=False)   # Weights
+        self.Q_target_b1 = nn.Variable([self.hidden_neurons], need_grad=False)                  # Biases
+        self.Q_target_w2 = nn.Variable([self.hidden_neurons, self.n_actions], need_grad=False)  # Weights
         self.Q_target_b2 = nn.Variable([self.n_actions], need_grad=False)      # Biases
 
         # Construct target Q-Network for Q-Learning.
@@ -122,11 +112,9 @@ class NeuralQLearner:
         # self.solver = S.Sgd(self.learning_rate)
         self.solver = S.RMSprop(self.learning_rate, 0.95)
         self.solver.set_parameters(nn.get_parameters())
-
-        self.update_Q = 100
+        self.update_Q = update_target
         self.iter = 0
         #
-        self.plot_reset = True
 
     def train_Q_network(self, input):
         # Perform a minibatch Q-learning update
@@ -149,13 +137,13 @@ class NeuralQLearner:
         self.Q_target_Network.forward(clear_buffer=True)
         Q_next = self.Q_target_Network.d.copy()
         maxQ = np.amax(Q_next, axis=1)
-        #maxQ = np.reshape(maxQ, (-1, 1))
+        # maxQ = np.reshape(maxQ, (-1, 1))
         # ----------------------------------------------
         # Calculate target value of Q-network
         target = Q_present.copy()
         for n in range(self.batch_size):
             a = np.argmin(abs(self.actions - input[n][0][1] ), axis=0)
-            #a = input[n][0][1]  # action_t
+            # a = input[n][0][1]  # action_t
             if input[n][1]:     # game_over
                 target[n][a] = input[n][0][2]  # reward_t
             else:
@@ -167,7 +155,7 @@ class NeuralQLearner:
         self.Q_x.d = s0_vector.copy()
         self.Q_y.d = target.copy()
         # Forward propagation given inputs.
-        #self.solver.zero_grad()
+        # self.solver.zero_grad()
         self.loss.forward(clear_no_need_grad=True)
         # Parameter gradients initialization and gradients computation by backprop.
         # Initialize grad
@@ -176,12 +164,12 @@ class NeuralQLearner:
         # Apply weight decay and update by Adam rule.
         self.solver.weight_decay(self.weight_decay)
         self.solver.update()
-        #mse = training_error(Q_Network.d, Q_y.d)
+        # mse = training_error(Q_Network.d, Q_y.d)
         self.iter += 1
 
         # Every C updates clone the Q-network to target Q-network
         if self.iter % self.update_Q == 0:
-            #print "Updating target Q-network"
+            # print "Updating target Q-network"
             self.update_Q_target()
 
     def update_Q_target(self):
@@ -190,6 +178,15 @@ class NeuralQLearner:
         self.Q_target_b1.d = params[1][1].d.copy()
         self.Q_target_w2.d = params[2][1].d.copy()
         self.Q_target_b2.d = params[3][1].d.copy()
+
+    def evaluate_Q_target(self, input):
+        result = list()
+        for n in range(len(input)):
+            self.Q_target_x.d = input[n]
+            self.Q_target_Network.forward(clear_buffer=True)
+            Q_hut = self.Q_target_Network.d.copy()
+            result.append(max(Q_hut[0]))
+        return result
 
     def training_error(self, y_pred, y_taget):
         mse = ((y_pred - y_taget) ** 2).sum(axis=1).mean()
@@ -229,110 +226,5 @@ class NeuralQLearner:
         print '--------------------------------------------------'
         print nn.get_parameters()
         print '--------------------------------------------------'
-
-    def plotQ(self,clear=False):
-        # Parameters
-        grid_on = True
-        v_max = 10. #np.max(self.Q[0, :, :])
-        v_min = -50.
-        x_labels = ["%.2f" % x for x in self.positions ]
-        y_labels = ["%.2f" % y for y in self.velocities]
-        titles = "Actions " + u"\u25C0" + ":push_left/" + u"\u25AA" + ":no_push/" + u"\u25B6" + ":push_right"
-        Q = np.zeros((self.N_velocity*len(self.actions),self.N_position*len(self.actions)))
-        for s_2 in range(len(self.velocities)):
-            for s_1 in range(len(self.positions)):
-                self.Q_target_x.d = [self.positions[s_1], self.velocities[s_2]]
-                self.Q_target_Network.forward(clear_buffer=True)
-                Q_hut = self.Q_target_Network.d.copy()
-                #print "Q_x:" , self.Q_x.shape , "self.Q.d:", self.Q.d.shape
-                for a in range(len(self.actions)):
-                    Q[3 * s_2 + a, 3 * s_1 + 0] = Q_hut[0][0]
-                    Q[3 * s_2 + a, 3 * s_1 + 1] = Q_hut[0][1]
-                    Q[3 * s_2 + a, 3 * s_1 + 2] = Q_hut[0][2]
-        im = axs.imshow(Q, interpolation='nearest', vmax=v_max, vmin=v_min, cmap=cm.jet)
-        axs.grid(grid_on)
-        axs.set_title(titles)
-        axs.set_xlabel('Position')
-        axs.set_ylabel('Velocity')
-        x_start, x_end = axs.get_xlim()
-        #y_start, y_end = axs.get_ylim()
-        axs.set_xticks(np.arange(x_start, x_end, 3))
-        axs.set_yticks(np.arange(x_start, x_end, 3))
-        axs.set_xticklabels(x_labels, minor=False, fontsize='small', horizontalalignment='left', rotation=90)
-        axs.set_yticklabels(y_labels, minor=False, fontsize='small', verticalalignment='top')
-        self.cb = fig.colorbar(im, ax=axs)
-        #
-        plt.show(block=False)
-
-    def plotQupdate(self):
-        Q = np.zeros((self.N_velocity * len(self.actions), self.N_position * len(self.actions)))
-        for s_2 in range(len(self.velocities)):
-            for s_1 in range(len(self.positions)):
-                self.Q_target_x.d = [self.positions[s_1], self.velocities[s_2]]
-                self.Q_target_Network.forward(clear_buffer=True)
-                Q_hut = self.Q_target_Network.d.copy()
-                #print "Q_x:" , self.Q_x.shape , "self.Q.d:", self.Q.d.shape
-                for a in range(len(self.actions)):
-                    Q[3 * s_2 + a, 3 * s_1 + 0] = Q_hut[0][0]
-                    Q[3 * s_2 + a, 3 * s_1 + 1] = Q_hut[0][1]
-                    Q[3 * s_2 + a, 3 * s_1 + 2] = Q_hut[0][2]
-        axs.get_images()[0].set_data(Q)
-        axs.draw_artist(axs.images[0])
-        fig.canvas.blit(axs.bbox)
-
-    def plotLoss(self, step, error):
-        if self.plot_reset:
-            self.plot_reset = False
-            if len(axs.lines) > 0:
-                axs.lines[0].remove()
-            axs.plot(step, error, color='blue', linestyle='-')
-        else:
-            x,y = axs.lines[0].get_data()
-            x = np.append(x, step)
-            y = np.append(y, error)
-            axs.lines[0].set_data(x, y)
-            axs.set_xlim(0, step)
-            axs.set_ylim(min(y), max(y))
-            #fig.canvas.draw()
-            axs.draw_artist(axs.lines[0])
-            fig.canvas.blit(axs.bbox)
-
-    def clearTrajectory(self):
-        self.plot_reset = True
-        if len(axs.lines) > 0:
-            axs.lines[0].remove()
-        fig.canvas.draw()
-
-    def plotTrajectory(self, state, action):
-        pos = 1 + 3 * np.argmin(abs(self.positions - state[0]), axis=0)
-        vel = 1 + 3 * np.argmin(abs(self.velocities - state[1]), axis=0)
-        if self.plot_reset:
-            self.plot_reset = False
-            if len(axs.lines) > 0:
-                axs.lines[0].remove()
-            axs.plot(pos, vel, color='black', linestyle='-')
-        else:
-            x, y = axs.lines[0].get_data()
-            if x[-1] != pos or y[-1] != vel:
-                x = np.append(x, pos)
-                y = np.append(y, vel)
-                axs.lines[0].set_data(x, y)
-                axs.draw_artist(axs.lines[0])
-                fig.canvas.blit(axs.bbox)
-
-    def plotQaction(self):
-        for i, vel in enumerate(self.velocities):
-            for j, pos in enumerate(self.positions):
-                self.Q_target_x.d = [pos, vel]
-                self.Q_target_Network.forward(clear_buffer=True)
-                Q = self.Q_target_Network.d.copy()
-                action = np.argmax(Q[0])
-                if action == 0:
-                    axs.text(3 * j + .4, 3 * i + 1.6, u"\u25C0", fontsize=5)
-                elif action == 1:
-                    axs.text(3 * j + .4, 3 * i + 1.6, u"\u25AA", fontsize=5)
-                else:
-                    axs.text(3 * j + .4, 3 * i + 1.6, u"\u25B6", fontsize=5)
-        fig.canvas.draw()
 
     # END NeuralQLearner class
