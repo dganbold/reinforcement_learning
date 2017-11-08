@@ -2,28 +2,38 @@
 #
 import gym
 from NeuralQLearner import *
+from PlotWrapper import *
 #
 #
 if __name__ == "__main__":
     # ----------------------------------------
-    # Define parameters for greedy policy
+    # Define parameters for e-Greedy policy
     epsilon = 0.5   # exploration
-    epsilon_floor = 0.1
+    epsilon_floor = 0.05
     exploration_decay = 0.998
     # Define parameters for Q-learning
     alpha = 0.2
     gamma = 0.98
     epoch = 1000
     max_steps = 200
-    max_memory = max_steps*10
-    batch_size = int(32)
+    # Define parameters for Q-network
+    batch_size = 32
+    hidden_neurons = 50
+    update_target = 100
+    max_memory = 2000
+    #
+    render = False
+    # ----------------------------------------
+    # Define environment/game
+    env_name = 'CartPole-v0'
+    env = gym.make(env_name)
     # ----------------------------------------
     # Actions
     # Type: Discrete(2)
     # Num | Observation
     # 0   | Push cart to the left
     # 1   | Push cart to the right
-    n_action = 2
+    n_action = env.action_space.n
     actions = np.array([0, 1])
     # ----------------------------------------
     # Observation
@@ -33,18 +43,17 @@ if __name__ == "__main__":
     # 1   | Cart Velocity | -Inf   | Inf
     # 2   | Pole Angle    | -41.8  | 41.8
     # 3   | Pole Velocity | -Inf   | Inf
-    n_input = 4
+    n_input = env.observation_space.shape[0]
     observation = []
     # ----------------------------------------
-    # Define environment/game
-    env_name = 'CartPole-v0'
-    env = gym.make(env_name)
+    # Initialize Plot object
+    R_plot = PlotTimeSeries(x_lim=[0, 100], y_lim=[0, max_steps+20], size=(6.8, 5.0))
+    R_plot.create([list(), list()], 'Episode', 'Total Reward', 'Neural Q-Learning: ' + env_name)
     # ----------------------------------------
-    # Initialize Neural Q-Learn object
-    AI = NeuralQLearner(n_input, actions, batch_size, epsilon, alpha, gamma)
-    #AI.plotQ()
+    # Initialize Neural Q-Learner object
+    AI = NeuralQLearner(n_input, actions, hidden_neurons, batch_size, update_target, epsilon, alpha, gamma)
     # Initialize experience replay object
-    exp = Experience(max_memory)
+    experienceMemory = Experience(max_memory)
     # ----------------------------------------
     # Train
     for e in range(epoch):
@@ -56,9 +65,9 @@ if __name__ == "__main__":
         step = 0
         total_reward = 0
         game_over = False
-        while (not game_over):
+        while not game_over:
             observation_capture = observation
-            #env.render()
+            if render: env.render()
 
             # Epsilon-Greedy policy
             action = AI.eGreedy(observation)
@@ -68,10 +77,10 @@ if __name__ == "__main__":
 
             # Store experience
             # input[i] = [[state_t, action_t, reward_t, state_t+1], game_over?]
-            exp.memorize([observation_capture, action, reward, observation], game_over)
+            experienceMemory.memorize([observation_capture, action, reward, observation], game_over)
 
             # Recall and replay experience
-            miniBatch = exp.recall(batch_size)
+            miniBatch = experienceMemory.recall(batch_size)
             # Refinement of model
             if len(miniBatch) == batch_size:
                 AI.train_Q_network(miniBatch)
@@ -84,7 +93,7 @@ if __name__ == "__main__":
         AI.epsilon *= exploration_decay
         AI.epsilon = max(epsilon_floor, AI.epsilon)
         # Plot
-        #AI.plotQupdate()
+        R_plot.append([e, total_reward])
         #
     # ----------------------------------------
     # Export trained Neural-Net
