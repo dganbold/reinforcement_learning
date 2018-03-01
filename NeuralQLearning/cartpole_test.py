@@ -56,7 +56,6 @@ if __name__ == "__main__":
     for e in range(epoch):
         # Get initial input
         observation = env.reset()
-        observation_init = observation
 
         # Training for single episode
         step = 0
@@ -67,7 +66,7 @@ if __name__ == "__main__":
             if render: env.render()
 
             # Greedy policy
-            action = AI.greedy(observation)
+            action = AI.greedy(state_capture)
 
             # Apply action, get rewards and new state
             observation, reward, game_over, info = env.step(action)
