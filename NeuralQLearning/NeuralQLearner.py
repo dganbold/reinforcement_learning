@@ -47,7 +47,7 @@ class Experience(object):
 
 
 class NeuralQLearner:
-    def __init__(self, n_states, actions, hidden_neurons=50, batch_size=128, update_target=100, epsilon=0.1, alpha=0.2, gamma=0.9):
+    def __init__(self, n_states, actions, hidden_neurons=100, batch_size=int(128), update_target=100, epsilon=0.1, gamma=0.9):
         # Get context.
         from nnabla.contrib.context import extension_context
         args = get_args()
@@ -61,7 +61,6 @@ class NeuralQLearner:
 
         # Q-Learing parametes
         self.epsilon = epsilon
-        self.alpha = alpha
         self.gamma = gamma
 
         self.actions = actions
@@ -70,6 +69,8 @@ class NeuralQLearner:
 
         # Neural network's training parametes
         self.learning_rate = 1e-3
+        self.gradient_momentum = 0.95
+        self.squared_gradient_momentum = 0.95
         # Hidden layer's neuron number
         self.hidden_neurons = hidden_neurons
         self.batch_size = batch_size
@@ -86,11 +87,12 @@ class NeuralQLearner:
 
         # Construct Q-Network for Q-Learning.
         l1 = F.tanh(PF.affine(self.Q_x, self.hidden_neurons, name='affine1'))
+        # l1 = F.relu(PF.affine(self.Q_x, self.hidden_neurons, name='affine1'))
         self.Q_Network = PF.affine(l1, self.n_actions, name='affine2')
         self.Q_Network.persistent = True
 
         # Create loss function.
-        # self.loss = F.mean(F.squared_error(self.train_model, self.yt))
+        # self.loss = F.mean(F.squared_error(self.Q_Network, self.Q_y))
         self.loss = F.mean(F.huber_loss(self.Q_Network, self.Q_y))
 
         # Preparing the Computation Graph for target Q-Network
@@ -101,7 +103,8 @@ class NeuralQLearner:
         self.Q_target_b2 = nn.Variable([self.n_actions], need_grad=False)      # Biases
 
         # Construct target Q-Network for Q-Learning.
-        h1 = F.tanh(F.affine(self.Q_target_x , self.Q_target_w1, self.Q_target_b1))
+        h1 = F.tanh(F.affine(self.Q_target_x, self.Q_target_w1, self.Q_target_b1))
+        # h1 = F.relu(F.affine(self.Q_target_x, self.Q_target_w1, self.Q_target_b1))
         self.Q_target_Network = F.affine(h1, self.Q_target_w2, self.Q_target_b2)
         self.update_Q_target()
 
@@ -109,8 +112,8 @@ class NeuralQLearner:
         print "Initializing the Solver."
         # --------------------------------------------------
         # Create Solver
-        # self.solver = S.Sgd(self.learning_rate)
-        self.solver = S.RMSprop(self.learning_rate, 0.95)
+        #self.solver = S.Sgd(self.learning_rate)
+        self.solver = S.RMSprop(self.learning_rate, self.gradient_momentum)
         self.solver.set_parameters(nn.get_parameters())
         self.update_Q = update_target
         self.iter = 0
@@ -137,13 +140,13 @@ class NeuralQLearner:
         self.Q_target_Network.forward(clear_buffer=True)
         Q_next = self.Q_target_Network.d.copy()
         maxQ = np.amax(Q_next, axis=1)
-        # maxQ = np.reshape(maxQ, (-1, 1))
+        #maxQ = np.reshape(maxQ, (-1, 1))
         # ----------------------------------------------
         # Calculate target value of Q-network
         target = Q_present.copy()
         for n in range(self.batch_size):
             a = np.argmin(abs(self.actions - input[n][0][1] ), axis=0)
-            # a = input[n][0][1]  # action_t
+            #a = input[n][0][1]  # action_t
             if input[n][1]:     # game_over
                 target[n][a] = input[n][0][2]  # reward_t
             else:
@@ -155,7 +158,7 @@ class NeuralQLearner:
         self.Q_x.d = s0_vector.copy()
         self.Q_y.d = target.copy()
         # Forward propagation given inputs.
-        # self.solver.zero_grad()
+        #self.solver.zero_grad()
         self.loss.forward(clear_no_need_grad=True)
         # Parameter gradients initialization and gradients computation by backprop.
         # Initialize grad
@@ -164,12 +167,12 @@ class NeuralQLearner:
         # Apply weight decay and update by Adam rule.
         self.solver.weight_decay(self.weight_decay)
         self.solver.update()
-        # mse = training_error(Q_Network.d, Q_y.d)
+        #mse = training_error(Q_Network.d, Q_y.d)
         self.iter += 1
 
         # Every C updates clone the Q-network to target Q-network
         if self.iter % self.update_Q == 0:
-            # print "Updating target Q-network"
+            #print "Updating target Q-network"
             self.update_Q_target()
 
     def update_Q_target(self):

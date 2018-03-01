@@ -77,8 +77,8 @@ class Plot2D(object):
 
     def create(self, data, x_label, y_label, title):
         # Parameters
-        v_max = 20.  # np.max(self.Q[0, :, :])
-        v_min = -50.
+        v_max = 15.  # np.max(self.Q[0, :, :])
+        v_min = -55.
         x_labels = ["%.3f" % x for x in self.x_grid]
         y_labels = ["%.3f" % y for y in self.y_grid]
         #

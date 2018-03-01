@@ -9,18 +9,17 @@ if __name__ == "__main__":
     # ----------------------------------------
     # Define parameters for e-Greedy policy
     epsilon = 0.5   # exploration
-    epsilon_floor = 0.1
+    epsilon_floor = 0.05
     exploration_decay = 0.998
     # Define parameters for Q-learning
-    alpha = 0.2
     gamma = 0.98
-    epoch = 1000
-    max_steps = 500
+    epoch = 1001
+    max_steps = 200
     # Define parameters for Q-network
-    batch_size = 32
     hidden_neurons = 50
-    update_target = 32
-    max_memory = 10000
+    update_target = 100
+    max_memory = max_steps*10
+    batch_size = int(32)
     #
     render = False
     # ----------------------------------------
@@ -44,6 +43,8 @@ if __name__ == "__main__":
     # 1   | velocity    | -0.07 | 0.07
     n_input = env.observation_space.shape[0]
     observation = []
+    #state_scale = 1.0/(env.observation_space.high - env.observation_space.low)
+    #state_offset = env.observation_space.low
     # ----------------------------------------
     # Initialize Plot object
     R_plot = PlotTimeSeries(x_lim=[0, 10], y_lim=[-max_steps-10, 0], size=(6.8, 5.0))
@@ -52,9 +53,10 @@ if __name__ == "__main__":
     titles = "Actions " + u"\u25C0" + ":push_left/" + u"\u25AA" + ":no_push/" + u"\u25B6" + ":push_right"
     Q_plot = Plot2D(x_lim=[-1.2, 0.6], y_lim=[-0.07, 0.07], x_n=27, y_n=27, size=(5.8, 5.0))
     S_mesh = Q_plot.getMeshGrid()
+    #S_mesh = state_scale * (S_mesh - state_offset)
     # ----------------------------------------
     # Initialize Neural Q-Learner object
-    AI = NeuralQLearner(n_input, actions, hidden_neurons, batch_size, update_target, epsilon, alpha, gamma)
+    AI = NeuralQLearner(n_input, actions, hidden_neurons, batch_size, update_target, epsilon, gamma)
     Q_mesh = AI.evaluate_Q_target(S_mesh)
     # Plot
     Q_plot.create(Q_mesh, 'Position', 'Velocity', titles)
@@ -65,17 +67,21 @@ if __name__ == "__main__":
     for e in range(epoch):
         # Get initial input
         observation = env.reset()
-
+        #state = env.reset()
+        #Take norm
+        #state = state_scale * (observation - state_offset)
         # Training for single episode
         step = 0
         total_reward = 0
         game_over = False
         while not game_over:
-            observation_capture = observation
+            state_capture = observation.copy()
+            #state_capture = state.copy()
+            # Render
             if render: env.render()
 
             # Epsilon-Greedy policy
-            action = AI.eGreedy(observation)
+            action = AI.eGreedy(state_capture)
 
             # Apply action, get rewards and new state
             observation, reward, done, info = env.step(action)
@@ -83,15 +89,19 @@ if __name__ == "__main__":
                 reward = 1
                 game_over = True
             else:
-                reward += 4.*np.abs(observation[1])
+                reward += 5.*np.abs(observation[1])
 
             step += 1
             if step >= max_steps and done:
                 game_over = True
 
+            # Take norm
+            #state = state_scale * (observation - state_offset)
+            state = observation.copy()
+
             # Store experience
             # input[i] = [[state_t, action_t, reward_t, state_t+1], game_over?]
-            experienceMemory.memorize([observation_capture, action, reward, observation], game_over)
+            experienceMemory.memorize([state_capture, action, reward, state], game_over)
 
             # Recall and replay experience
             miniBatch = experienceMemory.recall(batch_size)
@@ -109,10 +119,13 @@ if __name__ == "__main__":
         R_plot.append([e, total_reward])
         Q_mesh = AI.evaluate_Q_target(S_mesh)
         Q_plot.update(Q_mesh)
+        # Export trained Q-Network
+        if (e % 50) == 0 and e > 500:
+            AI.exportNetwork('models/%s_Q_network_epoch_%d' % (env_name, e))
         #
     # ----------------------------------------
     # Export trained Q-Network
-    AI.exportNetwork('models/%s_Q_network_epoch_%d' % (env_name, epoch))
+    #AI.exportNetwork('models/%s_Q_network_epoch_%d' % (env_name, epoch))
     # ----------------------------------------
     print("Done!.")
     # Some delay

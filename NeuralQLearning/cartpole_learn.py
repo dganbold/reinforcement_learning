@@ -9,7 +9,7 @@ if __name__ == "__main__":
     # ----------------------------------------
     # Define parameters for e-Greedy policy
     epsilon = 0.5   # exploration
-    epsilon_floor = 0.05
+    epsilon_floor = 0.1
     exploration_decay = 0.998
     # Define parameters for Q-learning
     alpha = 0.2
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     epoch = 1000
     max_steps = 200
     # Define parameters for Q-network
-    batch_size = 32
+    batch_size = int(32)
     hidden_neurons = 50
     update_target = 100
     max_memory = 2000
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     observation = []
     # ----------------------------------------
     # Initialize Plot object
-    R_plot = PlotTimeSeries(x_lim=[0, 100], y_lim=[0, max_steps+20], size=(6.8, 5.0))
+    R_plot = PlotTimeSeries(x_lim=[0, 10], y_lim=[0, max_steps+20], size=(6.8, 5.0))
     R_plot.create([list(), list()], 'Episode', 'Total Reward', 'Neural Q-Learning: ' + env_name)
     # ----------------------------------------
     # Initialize Neural Q-Learner object

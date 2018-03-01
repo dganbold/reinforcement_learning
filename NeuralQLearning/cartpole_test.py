@@ -16,9 +16,9 @@ if __name__ == "__main__":
     epoch = 10
     max_steps = 200
     # Define parameters for Q-network
-    batch_size = 32
+    batch_size = 128
     hidden_neurons = 50
-    update_target = 100
+    update_target = 128
     max_memory = 2000
     #
     render = True
