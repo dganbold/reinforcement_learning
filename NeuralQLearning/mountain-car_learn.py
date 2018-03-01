@@ -77,7 +77,6 @@ if __name__ == "__main__":
         while not game_over:
             state_capture = observation.copy()
             #state_capture = state.copy()
-            # Render
             if render: env.render()
 
             # Epsilon-Greedy policy

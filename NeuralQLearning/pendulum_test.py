@@ -11,15 +11,14 @@ if __name__ == "__main__":
     epsilon_floor = 0.05
     exploration_decay = 0.998
     # Define parameters for Q-learning
-    alpha = 0.2
     gamma = 0.98
-    epoch = 1000
+    epoch = 10
     max_steps = 200
     # Define parameters for Q-network
-    batch_size = 32
     hidden_neurons = 50
     update_target = 100
-    max_memory = 2000
+    max_memory = max_steps*10
+    batch_size = int(32)
     #
     render = True
     # ----------------------------------------
@@ -44,9 +43,9 @@ if __name__ == "__main__":
     observation = []
     # ----------------------------------------
     # Initialize Neural Q-Learner object
-    AI = NeuralQLearner(n_input, actions, hidden_neurons, batch_size, update_target, epsilon, alpha, gamma)
+    AI = NeuralQLearner(n_input, actions, hidden_neurons, batch_size, update_target, epsilon, gamma)
     # Load pre-trained model
-    AI.importNetwork('models/%s_Q_network_epoch_1000' % (env_name))
+    AI.importNetwork('models/%s_Q_network_epoch_800' % (env_name))
     # ----------------------------------------
     # Test
     observation = env.reset()
@@ -55,18 +54,17 @@ if __name__ == "__main__":
     for e in range(epoch):
         # Get initial input
         observation = env.reset()
-        observation_init = observation
 
         # Training for single episode
         step = 0
         total_reward = 0
         game_over = False
         while not game_over:
-            observation_capture = observation
+            state_capture = observation.copy()
             if render: env.render()
 
             # Greedy policy
-            action = AI.greedy(observation)
+            action = AI.greedy(state_capture)
 
             # Apply action, get rewards and new state
             observation, reward, game_over, info = env.step([action])

@@ -9,18 +9,17 @@ if __name__ == "__main__":
     # ----------------------------------------
     # Define parameters for e-Greedy policy
     epsilon = 0.5   # exploration
-    epsilon_floor = 0.1
+    epsilon_floor = 0.05
     exploration_decay = 0.998
     # Define parameters for Q-learning
-    alpha = 0.2
     gamma = 0.98
-    epoch = 1000
+    epoch = 501
     max_steps = 200
     # Define parameters for Q-network
-    batch_size = int(32)
     hidden_neurons = 50
     update_target = 100
-    max_memory = 2000
+    max_memory = max_steps*10
+    batch_size = int(32)
     #
     render = False
     # ----------------------------------------
@@ -51,7 +50,7 @@ if __name__ == "__main__":
     R_plot.create([list(), list()], 'Episode', 'Total Reward', 'Neural Q-Learning: ' + env_name)
     # ----------------------------------------
     # Initialize Neural Q-Learner object
-    AI = NeuralQLearner(n_input, actions, hidden_neurons, batch_size, update_target, epsilon, alpha, gamma)
+    AI = NeuralQLearner(n_input, actions, hidden_neurons, batch_size, update_target, epsilon, gamma)
     # Initialize experience replay object
     experienceMemory = Experience(max_memory)
     # ----------------------------------------
@@ -59,25 +58,24 @@ if __name__ == "__main__":
     for e in range(epoch):
         # Get initial input
         observation = env.reset()
-        observation_init = observation
 
         # Training for single episode
         step = 0
         total_reward = 0
         game_over = False
         while not game_over:
-            observation_capture = observation
+            state_capture = observation.copy()
             if render: env.render()
 
             # Epsilon-Greedy policy
-            action = AI.eGreedy(observation)
+            action = AI.eGreedy(state_capture)
 
             # Apply action, get rewards and new state
             observation, reward, game_over, info = env.step(action)
-
+            state = observation.copy()
             # Store experience
             # input[i] = [[state_t, action_t, reward_t, state_t+1], game_over?]
-            experienceMemory.memorize([observation_capture, action, reward, observation], game_over)
+            experienceMemory.memorize([state_capture, action, reward, state], game_over)
 
             # Recall and replay experience
             miniBatch = experienceMemory.recall(batch_size)
@@ -94,6 +92,9 @@ if __name__ == "__main__":
         AI.epsilon = max(epsilon_floor, AI.epsilon)
         # Plot
         R_plot.append([e, total_reward])
+        # Export trained Q-Network
+        if (e % 50) == 0 and e > 300:
+            AI.exportNetwork('models/%s_Q_network_epoch_%d' % (env_name, e))
         #
     # ----------------------------------------
     # Export trained Neural-Net
