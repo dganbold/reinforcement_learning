@@ -13,26 +13,26 @@ def make_env(params):
 #
 if __name__ == "__main__":
     # ----------------------------------------
-    params = atari_wrappers.HYPERPARAMS['pong']
+    params = atari_wrappers.HYPERPARAMS['breakout-small']
+    #BreakoutNoFrameskip-v4
     # ----------------------------------------
     # Define parameters for e-Greedy policy
-    epsilon = params['epsilon_start']
-    epsilon_floor = params['epsilon_final']
+    epsilon = params['epsilon_start']   # exploration
+    epsilon_floor = params['epsilon_final'] #0.05
     exploration_decay = 0.9999
     # Define parameters for Q-learning
     gamma = params['gamma'] #0.98
-    epoch = 30000
+    epoch = 40000
     # Define parameters for Q-network
     hidden_neurons = 256
     update_target = params['target_net_sync']
     max_memory = params['replay_size']
-
     batch_size = int(32)
     observation_period = params['replay_initial']
     learning_rate = params['learning_rate']
     #
-    render = True
-    #render = False
+    #render = True
+    render = False
     # ----------------------------------------
     # Define environment/game
     #env_name = 'Pong-v0'
@@ -53,7 +53,8 @@ if __name__ == "__main__":
     # 5   | 'LEFTFIRE'  |
     n_action = env.action_space.n
     #print n_action
-    actions = np.array([0, 1, 2, 3, 4, 5])
+    actions = np.array([0, 1, 2, 3])
+    #actions = np.array([0, 1, 2, 3, 4, 5])
     #print n_action
     # ----------------------------------------
     # Observation
@@ -66,16 +67,18 @@ if __name__ == "__main__":
     # ----------------------------------------
     # Initialize Neural DQN object
     AI = DeepQLearner(input_size, actions, hidden_neurons, batch_size, update_target, epsilon, gamma, learning_rate)
+    # Load pre-trained model
+    AI.importNetwork('models/%s_Deep_Q_network_epoch_42000' % (env_name))
     # Initialize experience replay object
     experienceMemory = Experience(max_memory)
-    max_total_reward = -float('inf')
+    #
+    max_total_reward = 0
     # ----------------------------------------
     # Train
     for e in range(epoch):
         # Get initial input
         observation = env.reset()
         action = actions[0]
-
         # Training for single episode
         step = 0
         total_reward = 0
@@ -85,6 +88,7 @@ if __name__ == "__main__":
             if render: env.render()
 
             # Epsilon-Greedy policy
+            #if (step % m) == 0 and step > 0:
             action = AI.eGreedy(observation.__array__())
 
             # Apply action, get rewards and new state
@@ -93,12 +97,11 @@ if __name__ == "__main__":
 
             # Store experience
             #done = game_over
-            if reward == 0: done = 0
-            else:           done = 1
+            #if reward == 0: done = 0
+            #else:           done = 1
             #if done == 1 and game_over == 1: print 'Game over!'
             # input[i] = [[state_t, action_t, reward_t, state_t+1], game_over?]
-            experienceMemory.memorize([state_capure, action, reward, state], done)
-            #experienceMemory.memorize([state_capure, action, reward, state], game_over)
+            experienceMemory.memorize([state_capure, action, reward, state], game_over)
 
             # Refinement of model
             #if experienceMemory.getsize() > observation_period:
@@ -110,21 +113,23 @@ if __name__ == "__main__":
             total_reward += reward
 
         # End of the single episode training
-        print('#TRAIN Episode:%3i, Reward:%7.3f, Steps:%3i, Exploration:%1.4f'%(e, total_reward, step, AI.epsilon))
+        if total_reward > params['stop_reward']: break
+
         # Update exploration
         AI.epsilon *= exploration_decay
         AI.epsilon = max(epsilon_floor, AI.epsilon)
         max_total_reward = max(max_total_reward,total_reward)
         # Plot
-        if (e % 3) == 0:
+        if (e % 10) == 0:
             R_plot.append([e, max_total_reward])
-            max_total_reward = -float('inf')
+            print('#TRAIN Episode:%3i, Max Reward:%7.3f, Steps:%3i, Exploration:%1.4f'%(e+42000, max_total_reward, step, AI.epsilon))
+            max_total_reward = 0
 
         # Export trained Q-Network
         if (e % 1000) == 0 and e >= 1000:
             # Dump reward to csv
-            R_plot.export('models/%s_Deep_Q_network_epoch_%d_rewards.csv' % (env_name, e))
-            AI.exportNetwork('models/%s_Deep_Q_network_epoch_%d' % (env_name, e))
+            R_plot.export('models/%s_Deep_Q_network_epoch_%d_rewards.csv' % (env_name, e+42000))
+            AI.exportNetwork('models/%s_Deep_Q_network_epoch_%d' % (env_name, e+42000))
         #
     # ----------------------------------------
     # Export trained Q-Network
@@ -133,6 +138,8 @@ if __name__ == "__main__":
     print("Done!.")
     # Some delay
     raw_input('Press enter to terminate:')
+    # Dump reward to csv
+    R_plot.export('%s_Deep_Q_network_epoch_%d_rewards.csv' % (env_name, e+42001))
     # Close environment
     env.close()
 # EOF
