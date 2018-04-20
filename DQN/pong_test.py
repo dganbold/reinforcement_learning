@@ -21,7 +21,7 @@ if __name__ == "__main__":
     exploration_slope = (params['epsilon_final'] - params['epsilon_start'])/params['epsilon_frames']
     # Define parameters for Q-learning
     gamma = params['gamma'] #0.98
-    epoch = 1000
+    epoch = 10
     # Define parameters for Q-network
     update_target = params['target_net_sync']
     max_memory = params['replay_size']
@@ -29,8 +29,8 @@ if __name__ == "__main__":
     observation_period = params['replay_initial']
     learning_rate = params['learning_rate']
     #
-    #render = True
-    render = False
+    render = True
+    #render = False
     # ----------------------------------------
     # Define environment/game
     env_name = params['env_name']
@@ -54,14 +54,10 @@ if __name__ == "__main__":
     # Type: Box(210, 160, 3) -> (84x84)
     input_size = env.observation_space.shape
     # ----------------------------------------
-    # Initialize Plot object
-    R_plot = PlotTimeSeries(x_lim=[0, 10], y_lim=[-25, 25], size=(6.8, 5.0))
-    R_plot.create([list(), list()], 'Episode', 'Total Reward', 'Deep Q-Learning: ' + env_name)
-    # ----------------------------------------
     # Initialize Neural DQN object
     AI = DeepQLearner(input_size, actions, batch_size, update_target, epsilon, gamma, learning_rate)
     # Load pre-trained model
-    #AI.importNetwork('models/%s_Deep_Q_network_epoch_42000' % (env_name))
+    AI.importNetwork('models/%s_NIPS_Deep_Q_network_epoch_1000_Adam' % (env_name))
     # Initialize experience replay object
     experienceMemory = Experience(max_memory)
     #
@@ -82,21 +78,13 @@ if __name__ == "__main__":
             if render: env.render()
 
             # Epsilon-Greedy policy
-            action = AI.eGreedy(observation.__array__())
+            #action = AI.eGreedy(observation.__array__())
+            action = AI.greedy(observation.__array__())
 
             # Apply action, get rewards and new state
             observation, reward, game_over, info = env.step(action)
             state = observation.__array__().copy()
 
-            # Store experience
-            # input[i] = [[state_t, action_t, reward_t, state_t+1], game_over?]
-            experienceMemory.memorize([state_capure, action, reward, state], game_over)
-
-            # Refinement of model
-            #if len(miniBatch) == batch_size:
-            if experienceMemory.getsize() > observation_period:
-                miniBatch = experienceMemory.recall(batch_size)
-                AI.train_Q_network(miniBatch)
             #
             steps += 1
             total_reward += reward
@@ -104,19 +92,6 @@ if __name__ == "__main__":
         # End of the single episode training
         total_steps += steps
         print('#TRAIN Episode:%4i, Reward:%3.2f, Steps:%4i, Exploration:%1.4f, Frames:%6i'%(e, total_reward, steps, AI.epsilon, total_steps))
-        #if total_reward > params['stop_reward']: break
-
-        # Update exploration
-        AI.epsilon = exploration_slope*total_steps + params['epsilon_start']
-        AI.epsilon = max(epsilon_floor, AI.epsilon)
-        R_plot.append([e, total_reward])
-
-        # Export trained Q-Network
-        if (e % 100) == 0:
-            # Dump reward to csv
-            R_plot.export('models/%s_NIPS_Deep_Q_network_epoch_%d_Adam_rewards.csv' % (env_name, e))
-            # Export trained Q-Network
-            AI.exportNetwork('models/%s_NIPS_Deep_Q_network_epoch_%d_Adam' % (env_name, e))
         #
     # ----------------------------------------
     print("Done!.")
